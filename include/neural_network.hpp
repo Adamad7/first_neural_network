@@ -23,6 +23,7 @@ class NeuralNetwork
 public:
     NeuralNetwork(std::vector<uint8_t> topology, ActivationFunction &activationFunction, std::vector<ExpectedOutput> expectedOutputs);
     void train(uint16_t populationSize = 100, uint8_t bestPopulationSize = 20, uint16_t numberOfEpochs = 1000, double mutationRate = 0.1);
+    std::vector<double> predict(std::vector<double> input);
 
 private:
     std::vector<ExpectedOutput> expectedOutputs;
@@ -33,6 +34,7 @@ private:
     NeuralNetData getNeuralNetData();
     void randomizeWeights();
     void shuffleAndMutateWeights();
+    void assignWeigthtsAndBiases(NeuralNetData &neuralNetData);
     std::vector<NeuralNetData> weigths;
     std::vector<NeuralNetData> bestWeights;
     uint8_t bestPopulationSize;
@@ -42,4 +44,5 @@ private:
     std::random_device randomDevice;
     std::uniform_real_distribution<double> distribution = std::uniform_real_distribution<double>(-2, 2);
     std::uniform_int_distribution<int> bestDistribution;
+    std::uniform_real_distribution<double> mutationDistribution;
 };

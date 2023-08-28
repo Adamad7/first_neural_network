@@ -1,4 +1,5 @@
 #include "../include/neural_network.hpp"
+#include <iostream>
 
 NeuralNetwork::NeuralNetwork(std::vector<uint8_t> topology, ActivationFunction &activationFunction, std::vector<ExpectedOutput> expectedOutputs)
     : activationFunction(activationFunction), expectedOutputs(expectedOutputs)
@@ -31,6 +32,7 @@ void NeuralNetwork::train(uint16_t populationSize, uint8_t bestPopulationSize, u
     this->bestPopulationSize = bestPopulationSize;
     this->numberOfEpochs = numberOfEpochs;
     this->mutationRate = mutationRate;
+    this->mutationDistribution = std::uniform_real_distribution<double>(1 - mutationRate, 1 + mutationRate);
 
     bestDistribution = std::uniform_int_distribution<int>(0, bestPopulationSize - 1);
 
@@ -57,7 +59,11 @@ void NeuralNetwork::train(uint16_t populationSize, uint8_t bestPopulationSize, u
                          { return a.error < b.error; });
 
         bestWeights = std::vector<NeuralNetData>(weigths.begin(), weigths.begin() + bestPopulationSize);
+        std::cout << "Epoch: " << epoch << " Error: " << bestWeights[0].error << std::endl;
     }
+    std::nth_element(weigths.begin(), weigths.begin(), weigths.end(), [](NeuralNetData &a, NeuralNetData &b)
+                     { return a.error < b.error; });
+    assignWeigthtsAndBiases(weigths[0]);
 }
 
 void NeuralNetwork::propagateForward(std::vector<double> input)
@@ -138,7 +144,7 @@ void NeuralNetwork::shuffleAndMutateWeights()
         uint16_t neuronIndex = 0;
         for (auto neuron : layers[i]->getNeurons())
         {
-            neuron->setBiasValue(bestWeights[bestDistribution(randomDevice)].biases[i - 1][neuronIndex]);
+            neuron->setBiasValue(bestWeights[bestDistribution(randomDevice)].biases[i - 1][neuronIndex] * mutationDistribution(randomDevice));
             uint16_t edgeIndex = 0;
             for (auto edge : neuron->getInputEdges())
             {
@@ -148,4 +154,35 @@ void NeuralNetwork::shuffleAndMutateWeights()
             neuronIndex++;
         }
     }
+}
+
+void NeuralNetwork::assignWeigthtsAndBiases(NeuralNetData &neuralNetData)
+{
+    for (uint8_t i = 1; i < layers.size(); i++)
+    {
+        uint16_t neuronIndex = 0;
+        for (auto neuron : layers[i]->getNeurons())
+        {
+            neuron->setBiasValue(neuralNetData.biases[i - 1][neuronIndex]);
+            uint16_t edgeIndex = 0;
+            for (auto edge : neuron->getInputEdges())
+            {
+                edge->setWeight(neuralNetData.weights[i - 1][neuronIndex][edgeIndex]);
+                edgeIndex++;
+            }
+            neuronIndex++;
+        }
+    }
+}
+
+std::vector<double> NeuralNetwork::predict(std::vector<double> input)
+{
+    assert(layers[0]->getNeurons().size() == input.size());
+    propagateForward(input);
+    std::vector<double> output;
+    for (auto neuron : layers.back()->getNeurons())
+    {
+        output.push_back(neuron->getValue());
+    }
+    return output;
 }
